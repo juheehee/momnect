@@ -13,6 +13,8 @@ application-dev.yml
 
 ### gradle ###
 .gradle/
+build/
+**/build/
 
 ### Eclipse ###
 .metadata
