@@ -11,11 +11,11 @@ const SignupComplete = () => {
     const searchParams = useSearchParams();
 
     // Zustand 스토어 사용
-    const { userInfo, setLoginStatus } = useUserStore();
+    const { user } = useUserStore();
 
     // 직접 닉네임 계산
-    const nickname = userInfo.nickname || userInfo.loginId || userInfo.name || userInfo.kakaoNickname || searchParams.get('nickname') || '사용자';
-    const isFromKakao = userInfo.signupType === 'kakao' || searchParams.get('from') === 'kakao';
+    const nickname = user?.nickname || user?.loginId || user?.name || user?.kakaoNickname || searchParams.get('nickname') || '사용자';
+    const isFromKakao = user?.oauthProvider === 'KAKAO' || searchParams.get('from') === 'kakao';
 
     // 동적 메시지 설정
     const getWelcomeMessages = () => {
@@ -39,14 +39,14 @@ const SignupComplete = () => {
     useEffect(() => {
         let mounted = true;
 
-        if (mounted && userInfo.signupStep === 3) {
+        if (mounted && user?.signupStep === 3) {
             // 필요한 완료 처리 로직만 유지
         }
 
         return () => {
             mounted = false;
         };
-    }, [userInfo.signupStep]);
+    }, [user?.signupStep]);
 
     // 로그인 핸들러
     const handleLogin = () => {
