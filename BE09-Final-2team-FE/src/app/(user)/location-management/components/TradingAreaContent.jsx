@@ -3,52 +3,69 @@
 import React, { useState, useRef, useEffect } from 'react';
 import '../location-management.css';
 import ConfirmModal, {MODAL_TYPES} from "@/components/common/ConfirmModal";
-
-const AVAILABLE_AREAS = ['서초동', '양재동', '신사동', '역삼동', '논현동', '강남동', '청담동', '압구정동', '도곡동', '개포동'];
+import { userAPI } from "@/lib/api";
+import { useUser } from "@/store/userStore";
+import { useGetMypageDashboard } from "@/store/mypageStore";
 
 const TradingAreaContent = () => {
-    // sessionStorage에서 초기값 불러오기 (SSR 안전 처리)
-    const [selectedAreas, setSelectedAreas] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('selectedAreas');
-            return saved ? JSON.parse(saved) : [];
-        }
-        return [];
-    });
+    const user = useUser();
+    const getMypageDashboard = useGetMypageDashboard();
 
+    const [selectedAreas, setSelectedAreas] = useState([]);
     const [isSearchMode, setIsSearchMode] = useState(false);
     const [searchKeyword, setSearchKeyword] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showLimitAlert, setShowLimitAlert] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [focusedIndex, setFocusedIndex] = useState(-1);
+    const [searchResults, setSearchResults] = useState([]); // API 검색 결과
+    const [isSearching, setIsSearching] = useState(false);  // 검색 중 로딩
 
     const initialAreas = useRef([]);
     const dropdownRef = useRef(null);
     const searchInputRef = useRef(null);
     const dropdownItemRefs = useRef([]);
 
-    // sessionStorage에 저장하는 useEffect 추가
+    // 마운트 시 기존 거래지역 불러오기
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('selectedAreas', JSON.stringify(selectedAreas));
-        }
-    }, [selectedAreas]);
-
-    useEffect(() => {
-        // sessionStorage에서 불러온 데이터를 초기값으로 설정
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('selectedAreas');
-            if (saved) {
-                const savedAreas = JSON.parse(saved);
-                initialAreas.current = [...savedAreas];
-            } else {
-                initialAreas.current = [...selectedAreas];
+        const loadTradeLocations = async () => {
+            if (!user?.id) return;
+            try {
+                const response = await userAPI.getMyTradeLocations(user.id);
+                const locations = response.data.data;
+                // API 응답: [{ id, emd, ... }] 형태
+                const areaList = locations.map(loc => ({ id: loc.id, name: loc.emd }));
+                setSelectedAreas(areaList);
+                initialAreas.current = [...areaList];
+            } catch (error) {
+                console.error("거래지역 불러오기 실패:", error);
             }
-        } else {
-            initialAreas.current = [...selectedAreas];
+        };
+        void loadTradeLocations();
+    }, [user?.id]);
+
+    // 검색어 변경 시 API 호출
+    useEffect(() => {
+        if (!searchKeyword.trim()) {
+            setSearchResults([]);
+            return;
         }
-    }, []);
+
+        const debounceTimer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const response = await userAPI.searchTradeLocations(searchKeyword);
+                setSearchResults(response.data.data || []);
+            } catch (error) {
+                console.error("지역 검색 실패:", error);
+                setSearchResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300); // 300ms 디바운스
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchKeyword]);
 
     // 외부 클릭 감지
     useEffect(() => {
@@ -110,33 +127,28 @@ const TradingAreaContent = () => {
     const handleInputChange = (e) => {
         setSearchKeyword(e.target.value);
         setFocusedIndex(-1); // 검색어 변경 시 포커스 초기화
+        setIsDropdownOpen(true);
     };
 
     // 키보드 네비게이션 처리
     const handleInputKeyDown = (e) => {
-        const filteredAreas = searchKeyword === ''
-            ? AVAILABLE_AREAS
-            : AVAILABLE_AREAS.filter(area => area.includes(searchKeyword));
-
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
                 // 끝에서 멈추도록 변경
-                const nextIndex = focusedIndex < filteredAreas.length - 1 ? focusedIndex + 1 : focusedIndex;
-                setFocusedIndex(nextIndex);
+                setFocusedIndex(prev => prev < searchResults.length - 1 ? prev + 1 : prev);
                 break;
             case 'ArrowUp':
                 e.preventDefault();
                 // 처음에서 멈추도록 변경
-                const prevIndex = focusedIndex > 0 ? focusedIndex - 1 : focusedIndex;
-                setFocusedIndex(prevIndex);
+                setFocusedIndex(prev => prev > 0 ? prev - 1 : prev);
                 break;
             case 'Enter':
                 e.preventDefault();
-                if (focusedIndex >= 0 && focusedIndex < filteredAreas.length) {
-                    handleAreaSelect(filteredAreas[focusedIndex]);
-                } else if (filteredAreas.length > 0) {
-                    handleAreaSelect(filteredAreas[0]);
+                if (focusedIndex >= 0 && focusedIndex < searchResults.length) {
+                    handleAreaSelect(searchResults[focusedIndex]);
+                } else if (searchResults.length > 0) {
+                    handleAreaSelect(searchResults[0]);
                 }
                 break;
             case 'Escape':
@@ -151,61 +163,46 @@ const TradingAreaContent = () => {
         setIsSearchMode(false);
         setSearchKeyword('');
         setFocusedIndex(-1);
-        if (searchInputRef.current) {
-            searchInputRef.current.value = '';
-        }
     };
 
     const handleAreaSelect = (area) => {
+        // area: { id, emd } 형태
         if (selectedAreas.length >= 3) {
             setShowLimitAlert(true);
             setTimeout(() => setShowLimitAlert(false), 5000);
             return;
         }
 
-        if (!selectedAreas.includes(area)) {
-            setSelectedAreas([...selectedAreas, area]);
+        if (!selectedAreas.find(a => a.id === area.id)) {
+            setSelectedAreas(prev => [...prev, { id: area.id, name: area.emd }]);
         }
-
-        setTimeout(() => {
-            // 검색 input 포커스 제거
-            if (searchInputRef.current) {
-                searchInputRef.current.blur();
-            }
-            // 현재 포커스된 모든 요소 제거
-            if (document.activeElement) {
-                document.activeElement.blur();
-            }
-            // body로 포커스 이동
-            document.body.focus();
-        }, 0);
 
         closeDropdown();
     };
 
     const handleRemoveArea = (index) => {
-        const newAreas = selectedAreas.filter((_, i) => i !== index);
-        setSelectedAreas(newAreas);
+        setSelectedAreas(prev => prev.filter((_, i) => i !== index));
         setShowLimitAlert(false);
     };
 
-    const handleSave = () => {
-        console.log('저장된 거래지역:', selectedAreas);
-        // sessionStorage에도 명시적으로 저장 (이미 useEffect에서 저장되지만 확실히 하기 위해)
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('selectedAreas', JSON.stringify(selectedAreas));
+    const handleSave = async () => {
+        try {
+            const areaIds = selectedAreas.map(area => area.id);
+            await userAPI.updateTradeLocations({ areaIds });
+            initialAreas.current = [...selectedAreas];
+            setIsConfirmModalOpen(true);
+            // 마이페이지 대시보드 즉시 갱신
+            await getMypageDashboard();
+        } catch (error) {
+            const message = error.response?.data?.message || "저장 중 오류가 발생했습니다.";
+            alert(message);
         }
-        initialAreas.current = [...selectedAreas];
-        setIsConfirmModalOpen(true);
     };
 
     const handleCloseModal = () => setIsConfirmModalOpen(false);
-    const hasChanges = JSON.stringify(selectedAreas) !== JSON.stringify(initialAreas.current);
 
-    // 필터링된 지역 목록
-    const filteredAreas = searchKeyword === ''
-        ? AVAILABLE_AREAS
-        : AVAILABLE_AREAS.filter(area => area.includes(searchKeyword));
+    const hasChanges = JSON.stringify(selectedAreas.map(a => a.id)) !==
+        JSON.stringify(initialAreas.current.map(a => a.id));
 
     return (
         <>
@@ -225,15 +222,6 @@ const TradingAreaContent = () => {
                                     }}
                                     tabIndex={0}
                                     role="button"
-                                    aria-haspopup="true"
-                                    aria-expanded={isDropdownOpen}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault();
-                                            setIsSearchMode(true);
-                                            setIsDropdownOpen(true);
-                                        }
-                                    }}
                                 >
                                     <span className="placeholder-left">주소를 검색하세요</span>
                                     <span className="placeholder-right">예: 서초동, 강남구, 마포구 등</span>
@@ -247,24 +235,14 @@ const TradingAreaContent = () => {
                                     onKeyDown={handleInputKeyDown}
                                     placeholder="지역명을 입력하세요..."
                                     autoFocus
-                                    aria-describedby="search-instructions"
-                                    aria-activedescendant={
-                                        focusedIndex >= 0 ? `area-option-${focusedIndex}` : undefined
-                                    }
                                 />
                             )}
-
-                            {/* 숨겨진 사용법 안내 */}
-                            <div id="search-instructions" className="sr-only">
-                                방향키로 항목을 선택하고 Enter키로 확정하세요. Escape키로 닫을 수 있습니다.
-                            </div>
 
                             {isDropdownOpen && (
                                 <div
                                     ref={dropdownRef}
                                     className="search-dropdown"
                                     role="listbox"
-                                    aria-label="거래지역 목록"
                                     style={{
                                         maxHeight: '200px',
                                         overflowY: 'auto'
@@ -272,28 +250,21 @@ const TradingAreaContent = () => {
                                 >
                                     <div className="dropdown-content">
                                         <div className="dropdown-results">
-                                            {filteredAreas.length === 0 ? (
-                                                <div className="dropdown-item no-results">
-                                                    검색 결과가 없습니다
-                                                </div>
-                                            ) : (
-                                                filteredAreas.map((area, index) => (
+                                            {isSearching ? (
+                                                    <div className="dropdown-item">검색 중...</div>
+                                                ) : searchResults.length === 0 && searchKeyword.trim() !== '' ? (
+                                                    <div className="dropdown-item no-results">검색 결과가 없습니다</div>
+                                            ) : searchResults.length > 0 ? (
+                                                searchResults.map((area, index) => (
                                                     <div
-                                                        key={area}
+                                                        key={area.id}
                                                         id={`area-option-${index}`}
                                                         ref={el => dropdownItemRefs.current[index] = el}
                                                         className={`dropdown-item ${
                                                             index === focusedIndex ? 'focused' : ''
                                                         }`}
                                                         role="option"
-                                                        aria-selected={index === focusedIndex}
                                                         onClick={() => handleAreaSelect(area)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                                e.preventDefault();
-                                                                handleAreaSelect(area);
-                                                            }
-                                                        }}
                                                         onMouseEnter={() => setFocusedIndex(index)}
                                                         onMouseLeave={() => setFocusedIndex(-1)}
                                                         tabIndex={-1}
@@ -306,10 +277,10 @@ const TradingAreaContent = () => {
                                                             borderBottom: '1px solid #f0f0f0'
                                                         }}
                                                     >
-                                                        {area}
+                                                        {area.emd}
                                                     </div>
                                                 ))
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                 </div>
@@ -340,12 +311,12 @@ const TradingAreaContent = () => {
                             ) : (
                                 <div className="areas-list">
                                     {selectedAreas.map((area, index) => (
-                                        <div key={index} className="area-item">
-                                            <span>{area}</span>
+                                        <div key={area.id} className="area-item">
+                                            <span>{area.name}</span>
                                             <button
                                                 className="remove-area-btn"
                                                 onClick={() => handleRemoveArea(index)}
-                                                aria-label={`${area} 삭제`}
+                                                aria-label={`${area.name} 삭제`}
                                             >
                                                 ×
                                             </button>
