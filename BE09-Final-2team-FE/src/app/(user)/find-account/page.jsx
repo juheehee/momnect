@@ -40,9 +40,12 @@ const FindAccount = () => {
     const [passwordValidation, setPasswordValidation] = useState({ status: 'default', message: '' });
     const [resultModal, setResultModal] = useState({
         isOpen: false,
-        type: '',
-        data: null
+        type: /** @type {string} */ (''),
+        data: /** @type {{ loginId?: string } | null} */ (null)
     });
+
+    // resetToken: verify-account 성공 시 저장, reset-password 호출 시 사용
+    const [resetToken, setResetToken] = useState(null);
 
     const setValidationMessage = createValidationSetter(setValidationStates);
 
@@ -56,47 +59,51 @@ const FindAccount = () => {
         }
     }, [searchParams]);
 
-    const checkAccountExists = async (type, data) => {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                try {
-                    const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-                    const testAccounts = [
-                        { name: '홍길동', email: 'hong@example.com', loginId: 'hongildong' },
-                        { name: '김철수', email: 'kim@example.com', loginId: 'kimchulsoo' },
-                        { name: '이영희', email: 'lee@example.com', loginId: 'leeyounghee' }
-                    ];
+    // 실제 api 연동 : 아이디 / 비밀번호 찾기
+    const verifyAccountAPI = async (type, data) => {
+        const body = {
+            type,  // "FIND_ID" | "RESET_PASSWORD"
+            email: type === 'FIND_ID' ? data.email : data.passwordEmail,
+            ...(type === 'FIND_ID' && { name: data.name }),
+            ...(type === 'RESET_PASSWORD' && { loginId: data.loginId }),
+        };
 
-                    const allAccounts = [...registeredUsers, ...testAccounts];
-
-                    if (type === 'findId') {
-                        const account = allAccounts.find(acc =>
-                            acc.name === data.name && acc.email === data.email
-                        );
-                        resolve({
-                            success: !!account,
-                            data: account ? { loginId: account.loginId } : null,
-                            message: account ? '계정이 확인되었습니다' : '일치하는 계정을 찾을 수 없습니다'
-                        });
-                    } else {
-                        const account = allAccounts.find(acc =>
-                            acc.loginId === data.loginId && acc.email === data.passwordEmail
-                        );
-                        resolve({
-                            success: !!account,
-                            data: account ? { email: account.email } : null,
-                            message: account ? '계정이 확인되었습니다' : '일치하는 계정을 찾을 수 없습니다'
-                        });
-                    }
-                } catch (error) {
-                    resolve({
-                        success: false,
-                        data: null,
-                        message: '계정 확인 중 오류가 발생했습니다'
-                    });
-                }
-            }, 1500);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_USER_API_URL}/auth/verify-account`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body),
         });
+
+        const json = await res.json();
+
+        if (!res.ok || !json.data?.success) {
+            throw new Error(json.data?.message || json.message || '계정을 찾을 수 없습니다');
+        }
+
+        return json.data; // { type, success, message, loginId?, resetToken? }
+    };
+
+    // 실제 API 연동: 비밀번호 재설정
+    const resetPasswordAPI = async (token, newPassword, newPasswordConfirm) => {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_USER_API_URL}/auth/reset-password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                resetToken: token,
+                newPassword,
+                newPasswordConfirm,
+            }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+            throw new Error(json.message || '비밀번호 재설정에 실패했습니다');
+        }
+
+        return json;
     };
 
     const handleInputChange = (e) => {
@@ -192,19 +199,17 @@ const FindAccount = () => {
         setValidationMessage(field, 'loading', '🔄 확인 중...');
 
         try {
-            const data = activeTab === 'findId'
-                ? { name: formData.name, email: formData.email }
-                : { loginId: formData.loginId, passwordEmail: formData.passwordEmail };
+            const type = activeTab === 'findId' ? 'FIND_ID' : 'RESET_PASSWORD';
+            const result = await verifyAccountAPI(type, formData);
 
-            const result = await checkAccountExists(activeTab, data);
-
-            if (result.success) {
-                setValidationMessage(field, 'success', '✅ 계정이 확인되었습니다', true);
-            } else {
-                setValidationMessage(field, 'error', `❌ ${result.message}`);
+            // RESET_PASSWORD 성공 시 토큰 저장
+            if (result.resetToken) {
+                setResetToken(result.resetToken);
             }
+
+            setValidationMessage(field, 'success', '✅ 계정이 확인되었습니다', true);
         } catch (error) {
-            setValidationMessage(field, 'error', '❌ 확인 중 오류가 발생했습니다');
+            setValidationMessage(field, 'error', `❌ ${error.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -217,24 +222,23 @@ const FindAccount = () => {
         if (!validationStates[field].checked) return;
 
         if (activeTab === 'findId') {
-            const data = { name: formData.name, email: formData.email };
-            const result = await checkAccountExists(activeTab, data);
-
-            if (result.success) {
-                setResultModal({
-                    isOpen: true,
-                    type: 'idResult',
-                    data: result.data
-                });
+            // 아이디 찾기: verify-account 재호출하여 loginId 가져오기
+            try {
+                const result = await verifyAccountAPI('FIND_ID', formData);
+                setResultModal({ isOpen: true, type: 'idResult', data: { loginId: result.loginId } });
+            } catch (error) {
+                setValidationMessage('email', 'error', `❌ ${error.message}`);
             }
         } else {
-            if (passwordValidation.status !== 'success') return;
+            // 비밀번호 재설정: resetToken + 새 비밀번호로 API 호출
+            if (passwordValidation.status !== 'success' || !resetToken) return;
 
-            setResultModal({
-                isOpen: true,
-                type: 'passwordResult',
-                data: null
-            });
+            try {
+                await resetPasswordAPI(resetToken, formData.newPassword, formData.newPasswordConfirm);
+                setResultModal({ isOpen: true, type: 'passwordResult', data: null });
+            } catch (error) {
+                setPasswordValidation({ status: 'error', message: `❌ ${error.message}` });
+            }
         }
     };
 
@@ -349,6 +353,7 @@ const FindAccount = () => {
                 )}
             </div>
 
+            {/* 계정 확인 후 비밀번호 입력칸 노출 */}
             {validationStates.passwordEmail.checked && (
                 <>
                     <div className="form-group">

@@ -1,10 +1,13 @@
 import { useUserStore } from '@/store/userStore';
 
 // 검증 상태 설정 함수 생성
-export const createValidationSetter = (setValidationStates) => (field, status, message) => {
+export const createValidationSetter = (setValidationStates) => (field, status, message, checked) => {
     setValidationStates(prev => ({
         ...prev,
-        [field]: { status, message, checked: status === 'success' }
+        [field]: {
+            status,
+            message,
+            checked: checked !== undefined ? checked : status === 'success' } // 명시적으로 넘기면 그 값 사용
     }));
 };
 
