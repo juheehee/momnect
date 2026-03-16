@@ -143,6 +143,21 @@ export const userAPI = {
   checkUserExists: (userId) => api.get(`/user-service/users/${userId}/exists`),
 };
 
+// Child API 함수들
+export const childAPI = {
+    // 자녀 목록 조회
+    getChildren: () => api.get("/user-service/users/children"),
+
+    // 자녀 등록
+    createChild: (data) => api.post("/user-service/users/children", data),
+
+    // 자녀 수정
+    updateChild: (childId, data) => api.put(`/user-service/users/children/${childId}`, data),
+
+    // 자녀 삭제
+    deleteChild: (childId) => api.delete(`/user-service/users/children/${childId}`),
+};
+
 // Product Service API 함수들
 export const productAPI = {
   // 카테고리 트리 조회

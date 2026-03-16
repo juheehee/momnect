@@ -1,28 +1,54 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Sidebar from "@/components/common/Sidebar";
 import ConfirmModal, { MODAL_TYPES } from "@/components/common/ConfirmModal";
+import { useGetMypageDashboard } from "@/store/mypageStore";
+import { childAPI } from "@/lib/api";
 import './child-management.css';
 
 const ChildManagement = () => {
-    const router = useRouter();
-
-    // 현재 저장된 자녀 정보 (실제로는 API에서 가져올 데이터)
-    const [savedChildren] = useState([
-        // { id: 1, nickname: '첫째', birthDate: '2020-03-15', age: 4 },
-        // { id: 2, nickname: '둘째', birthDate: '2022-07-20', age: 2 }
-    ]);
-
     const [childForms, setChildForms] = useState([
-        { id: Date.now(), nickname: '', birthDate: '', age: null }
+        { id: Date.now(), nickname: '', birthDate: '', age: null, isExisting: false }
     ]);
-
     const [isLoading, setIsLoading] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
     const [isChildrenSaved, setIsChildrenSaved] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
+
+    // 8년 전 날짜 계산 (백엔드 8세 제한에 맞춤)
+    const minDate = new Date();
+    minDate.setFullYear(minDate.getFullYear() - 8);
+    const minDateStr = minDate.toISOString().split('T')[0];
+    const maxDateStr = new Date().toISOString().split('T')[0];
+
+    const getMypageDashboard = useGetMypageDashboard();
+
+    // 마운트 시 기존 자녀 목록 불러오기
+    useEffect(() => {
+        const loadChildren = async () => {
+            try {
+                const response = await childAPI.getChildren();
+                const children = response.data.data;
+
+                // 기존 자녀 있으면 폼에 채워주기
+                if (children.length > 0) {
+                    setChildForms(children.map(child => ({
+                        id: child.id,
+                        nickname: child.nickname,
+                        birthDate: child.birthDate,
+                        age: child.age,
+                        isExisting: true, // 기존 데이터 표시용
+                    })));
+                    setIsChildrenSaved(true);
+                }
+            } catch (error) {
+                console.error("자녀 목록 조회 실패:", error);
+            }
+        };
+        loadChildren();
+    }, []);
 
     // 나이 계산 함수
     const calculateAge = (birthDate) => {
@@ -71,15 +97,29 @@ const ChildManagement = () => {
     };
 
     // 자녀 폼 삭제
-    const removeChildForm = (id) => {
-        if (childForms.length > 1) {
-            setIsChildrenSaved(false);
-            setChildForms(prev => prev.filter(form => form.id !== id));
+    const removeChildForm = async (id) => {
+        if (childForms.length <= 1) return;
+
+        const form = childForms.find(f => f.id === id);
+
+        // 기존 데이터면 API로 삭제
+        if (form?.isExisting) {
+            try {
+                await childAPI.deleteChild(id);
+            } catch (error) {
+                const message = error.response?.data?.message || "삭제 중 오류가 발생했습니다.";
+                setErrorMsg(message);
+                return;
+            }
         }
+
+        setIsChildrenSaved(false);
+        setChildForms(prev => prev.filter(f => f.id !== id));
     };
 
     // 저장 버튼 클릭
     const handleSaveClick = () => {
+        setErrorMsg("");
         setIsConfirmModalOpen(true);
     };
 
@@ -88,13 +128,29 @@ const ChildManagement = () => {
         setIsConfirmModalOpen(false);
         setIsLoading(true);
 
-        // 실제로는 API 호출
-        setTimeout(() => {
-            console.log('저장된 자녀 정보:', childForms);
-            setIsLoading(false);
+        try {
+            for (const form of childForms) {
+                const requestData = {
+                    nickname: form.nickname,
+                    birthDate: form.birthDate,
+                };
+
+                if (form.isExisting) {
+                    await childAPI.updateChild(form.id, requestData);
+                } else {
+                    await childAPI.createChild(requestData);
+                }
+            }
+
             setIsChildrenSaved(true);
             setIsCompleteModalOpen(true);
-        }, 1000);
+            await getMypageDashboard(); // 대시보드에 바로 추가하기
+        } catch (error) {
+            const message = error.response?.data?.message || "저장 중 오류가 발생했습니다.";
+            setErrorMsg(message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSaveCancel = () => {
@@ -123,7 +179,7 @@ const ChildManagement = () => {
                     <div className="top-section">
                         {/* 안내 메시지 */}
                         <div className="info-message">
-                            자녀는 최대 2명까지 저장가능합니다.
+                            자녀는 최대 2명까지 저장가능합니다. (8세 미만)
                         </div>
 
                         {/* 자녀 폼들 */}
@@ -165,7 +221,8 @@ const ChildManagement = () => {
                                             value={form.birthDate}
                                             onChange={(e) => handleInputChange(form.id, 'birthDate', e.target.value)}
                                             className="child-input date-input"
-                                            max={new Date().toISOString().split('T')[0]} // 오늘 날짜까지만 선택 가능
+                                            min={minDateStr}
+                                            max={maxDateStr}
                                         />
                                         <div className="input-help">
                                             {form.age !== null ?
@@ -177,6 +234,11 @@ const ChildManagement = () => {
                                 </div>
                             ))}
                         </div>
+
+                        {/* 에러 메시지 */}
+                        {errorMsg && (
+                            <p className="text-sm text-red-600 mt-2">{errorMsg}</p>
+                        )}
 
                         {/* 추가 버튼 */}
                         {childForms.length < 2 && (
