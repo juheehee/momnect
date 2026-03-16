@@ -154,6 +154,8 @@ public class ChildService {
                 .userId(userId)
                 .nickname(request.getNickname().trim())
                 .birthDate(request.getBirthDate())
+                .createdBy(userId)
+                .updatedBy(userId)
                 .build();
     }
 
@@ -167,6 +169,7 @@ public class ChildService {
         if (request.getBirthDate() != null) {
             child.setBirthDate(request.getBirthDate());
         }
+        child.setUpdatedBy(child.getUserId());
     }
 
     /**

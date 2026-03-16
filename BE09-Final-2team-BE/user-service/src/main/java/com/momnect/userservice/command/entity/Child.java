@@ -26,4 +26,10 @@ public class Child {
 
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate; // 자녀 생년월일
+
+    @Column(name = "created_by", nullable = false)
+    private Long createdBy;
+
+    @Column(name = "updated_by", nullable = false)
+    private Long updatedBy;
 }
