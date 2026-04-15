@@ -114,7 +114,7 @@ public class AuthController {
      * @return 새로운 AccessToken이 설정된 응답 (쿠키)
      */
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<Void>> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
+    public ResponseEntity<ApiResponse<RefreshResponseDTO>> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
         if(refreshToken == null) {
             throw new RuntimeException("refreshToken is null");
@@ -127,7 +127,7 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
-                .body(ApiResponse.success(null));
+                .body(ApiResponse.success(new RefreshResponseDTO(newAccessToken)));
     }
 
     /**
