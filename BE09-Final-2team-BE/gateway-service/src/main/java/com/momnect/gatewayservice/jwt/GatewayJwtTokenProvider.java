@@ -31,7 +31,7 @@ public class GatewayJwtTokenProvider {
                     .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
-            throw new RuntimeException("Invalid JWT Token", e);
+            return false; // throw 대신 false 반환
         }
     }
 
