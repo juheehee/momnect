@@ -40,8 +40,8 @@ eureka:
 
 jwt:
   secret: testlocaljwtsecretkeyfordevelopmentonlyminimum32characters
-  expiration: 604800000        # access 토큰 만료
-  refresh-expiration: 604800000 # refresh 토큰 만료
+  expiration: 1800000           # accessToken 만료 30분 (30 * 60 * 1000)
+  refresh-expiration: 604800000 # refreshToken 만료 7일 (7 * 24 * 60 * 60 * 1000)
 
 ftp:
   file-server-url: ""

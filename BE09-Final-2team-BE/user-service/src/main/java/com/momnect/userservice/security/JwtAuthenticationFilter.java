@@ -51,11 +51,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 null,
                                 List.of(new SimpleGrantedAuthority("ROLE_" + role))
                         );
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
                 // 다른 부분에서 사용할 수 있도록 request에 추가
+                SecurityContextHolder.getContext().setAuthentication(authentication);
                 request.setAttribute("X-User-Id", userId);
                 request.setAttribute("X-User-Role", role);
+            } else {
+                // 토큰이 있는데 유효하지 않으면 → 401
+                log.debug("[AuthenticationFilter] Invalid token - returning 401");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"유효하지 않은 토큰입니다\"}");
+                return; // 필터 체인 중단
             }
         } else {
             log.debug("[AuthenticationFilter] No Authorization header found or invalid format.");
