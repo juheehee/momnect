@@ -1,6 +1,6 @@
 "use client";
 
-// 🔥 개별 상태 훅들 import
+// 개별 상태 훅들 import
 import { useUser, useIsAuthenticated, useUserLoading, useLogout } from "@/store/userStore";
 import { useCategoryStore } from "@/store/categoryStore";
 import ChatListSidebar from "@/app/chat/components/ChatListSideBar";
@@ -8,6 +8,7 @@ import { groupCategoryWithColumn } from "@/utils/groupCategoryData";
 import { Heart, Menu, MessageCircleMore, Search, ShoppingBag, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from 'sonner';
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -57,16 +58,12 @@ export default function Header() {
     if (loading) return; // 로딩 중이면 중복 실행 방지
 
     try {
-      const result = await logout();
-      if (result.success) {
-        alert("로그아웃되었습니다.");
-        router.push("/"); // 메인으로 이동
-      } else {
-        alert("로그아웃 중 오류가 발생했습니다.");
-      }
+      await logout();
+      toast.success('로그아웃되었습니다.');
+      window.location.replace('/'); //  페이지를 완전히 새로고침하면서 이동해서 useEffect 재실행을 막아줌
     } catch (error) {
-      console.error("로그아웃 에러:", error);
-      alert("로그아웃 중 오류가 발생했습니다.");
+      console.error('로그아웃 에러:', error);
+      toast.error('로그아웃 중 오류가 발생했습니다.');
     }
   };
 

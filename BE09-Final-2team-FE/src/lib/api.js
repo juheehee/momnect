@@ -1,5 +1,6 @@
 import axios from "axios";
-import { useUserStore } from "@/store/userStore";
+import { toast } from 'sonner';
+import { useUserStore } from '@/store/userStore';
 import { TradeStatus } from "@/enums/tradeStatus";
 
 // 환경변수에서 API URL 가져오기
@@ -53,21 +54,90 @@ api.interceptors.request.use(
   }
 );
 
+// 재발급 중복 방지용
+let isRefreshing = false;
+let failedQueue = [];
+let hasShownExpiredToast = false; // 처음엔 안 보여진 상태
+
+const processQueue = (error) => {
+    failedQueue.forEach(({ resolve, reject }) => {
+        error ? reject(error) : resolve();
+    });
+    failedQueue = [];
+};
+
 // 응답 인터셉터 - 에러 처리
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    console.error("API Response Error:", {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-      data: error.response?.data,
-    });
-    return Promise.reject(error);
-  }
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            // 로그아웃 요청은 인터셉터 처리 제외
+            if (originalRequest.url?.includes('/auth/logout')) {
+                return Promise.reject(error);
+            }
+
+            // 이미 로그아웃된 상태면 토스트 없이 그냥 reject
+            const { isAuthenticated } = useUserStore.getState();
+            if (!isAuthenticated) {
+                return Promise.reject(error);
+            }
+
+            // 리프레시 요청 자체가 401이면 → 바로 로그아웃
+            if (originalRequest.url?.includes('/auth/refresh')) {
+                if (!hasShownExpiredToast) {
+                    hasShownExpiredToast = true;
+                    toast.error('세션이 만료되었습니다. 다시 로그인해 주세요.');
+                }
+                useUserStore.getState().logout();
+                window.location.replace('/login');
+                return Promise.reject(error);
+            }
+
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                })
+                    .then(() => api(originalRequest))
+                    .catch((err) => Promise.reject(err));
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                const res = await api.post('/user-service/auth/refresh');
+                const newAccessToken = res.data.data.accessToken;
+
+                // Zustand 상태 업데이트
+                useUserStore.getState().setAccessToken(newAccessToken);
+
+                processQueue(null);
+                return api(originalRequest);
+            } catch (refreshError) { // 리프레시 실패
+                processQueue(refreshError);
+                if (!hasShownExpiredToast) {
+                    hasShownExpiredToast = true;
+                    toast.error('세션이 만료되었습니다. 다시 로그인해 주세요.');
+                }
+                useUserStore.getState().logout();
+                window.location.replace('/login');
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        console.error('API Response Error:', {
+            url: error.config?.url,
+            method: error.config?.method,
+            status: error.response?.status,
+            message: error.response?.data?.message || error.message,
+            data: error.response?.data,
+        });
+        return Promise.reject(error);
+    }
 );
 
 // File Service API 함수들

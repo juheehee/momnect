@@ -154,10 +154,6 @@ export const useUserStore = create(
                         error: null
                     });
                     console.log('로컬 로그아웃 완료');
-                    // 여기에 리다이렉트 추가
-                    if (typeof window !== 'undefined') {
-                        window.location.replace('/'); //replace 사용하면 뒤로가기 불가
-                    }
                 };
 
                 try {
@@ -203,6 +199,11 @@ export const useUserStore = create(
                 const { user } = get();
                 if (!user) return '게스트';
                 return user.nickname || user.name || user.loginId || '사용자';
+            },
+
+            // accessToken 업데이트
+            setAccessToken: (token) => {
+                set({ accessToken: token });
             },
 
             isLoggedIn: () => {
@@ -264,5 +265,6 @@ export const useSignup = () => useUserStore((state) => state.signup);
 export const useLogout = () => useUserStore((state) => state.logout);
 export const useCheckAuthStatus = () => useUserStore((state) => state.checkAuthStatus);
 export const useGetDisplayName = () => useUserStore((state) => state.getDisplayName);
+export const useSetAccessToken = () => useUserStore((state) => state.setAccessToken);
 export const useIsLoggedIn = () => useUserStore((state) => state.isLoggedIn);
 export const useCheckAuthStatusSilently = () => useUserStore((state) => state.checkAuthStatusSilently);

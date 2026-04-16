@@ -2,6 +2,7 @@
 
 import Sidebar from "@/components/common/Sidebar";
 import { Button } from "@/components/ui/button";
+import { toast } from 'sonner';
 import { Check } from "lucide-react";
 import React, { useState } from "react";
 import ConfirmModal from "@/components/common/ConfirmModal";
@@ -71,12 +72,13 @@ export default function WithdrawlSidebar(props) {
       closeAll();
 
       await logout();
-      // logout()에 이미 router.push("/") 있어서 별도 redirect 불필요
+      toast.success('탈퇴가 완료되었습니다.');
+      window.location.replace('/');
 
     } catch (error) {
       setShowModal(false);
       const message = error.response?.data?.message || "탈퇴 처리 중 오류가 발생했습니다.";
-      setErrorMsg(message); // alert 대신 인라인 에러 표시
+      setErrorMsg(message);
     } finally {
       setIsLoading(false);
     }

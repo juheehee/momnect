@@ -8,6 +8,7 @@ import { useCheckAuthStatusSilently, useIsAuthenticated, useUser } from "@/store
 import { useCategoryStore } from "@/store/categoryStore"; // CategoryStore
 import websocketManager from "@/lib/websocketManager";
 import Loading from "./loading/loading";
+import { Toaster } from 'sonner';
 
 const noLayoutPaths = ["/login", "/signup", "/signup/complete", "/additional-info", "/find-account"]; // 필요 경로 추가
 
@@ -97,6 +98,7 @@ function LoadingFallback() {
 export default function ClientLayout({ children }) {
   return (
     <Suspense fallback={<LoadingFallback />}>
+      <Toaster position="top-center" richColors />
       <LayoutContent>{children}</LayoutContent>
     </Suspense>
   );
