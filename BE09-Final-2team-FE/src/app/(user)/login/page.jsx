@@ -154,7 +154,7 @@ export default function Login() {
                             onClick={handleKakaoLogin}
                             disabled={isLoading}
                         >
-                            카카오 아이디로 로그인
+                            <img src="/images/login/kakao_login_large_wide.png" alt="카카오 로그인" />
                         </button>
                     </div>
                 </form>
