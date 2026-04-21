@@ -2,7 +2,7 @@ server:
   port: 8000
 
 jwt:
-  secret: testlocaljwtsecretkeyfordevelopmentonlyminimum32characters
+  secret: ${JWT_SECRET}
 
 spring:
   application:

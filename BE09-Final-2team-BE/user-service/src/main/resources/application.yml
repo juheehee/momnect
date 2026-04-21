@@ -14,9 +14,9 @@ spring:
         format_sql: true
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/momnect
-    username: root
-    password: mysql1
+    url: ${USER_DB_URL:jdbc:mysql://localhost:3306/momnect}
+    username: ${USER_DB_USERNAME}
+    password: ${USER_DB_PASSWORD}
 
   feign:
     client:
@@ -29,6 +29,26 @@ spring:
       review-service:
         url: lb://REVIEW-SERVICE
 
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8000/api/v1/user-service/login/oauth2/code/kakao}
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            scope:
+              - profile_nickname
+              - profile_image
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
 eureka:
   instance:
     prefer-ip-address: true
@@ -39,7 +59,7 @@ eureka:
       defaultZone: http://localhost:8761/eureka
 
 jwt:
-  secret: testlocaljwtsecretkeyfordevelopmentonlyminimum32characters
+  secret: ${JWT_SECRET}
   expiration: 1800000           # accessToken 만료 30분 (30 * 60 * 1000)
   refresh-expiration: 604800000 # refreshToken 만료 7일 (7 * 24 * 60 * 60 * 1000)
 
