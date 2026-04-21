@@ -10,7 +10,7 @@ import websocketManager from "@/lib/websocketManager";
 import Loading from "./loading/loading";
 import { Toaster } from 'sonner';
 
-const noLayoutPaths = ["/login", "/signup", "/signup/complete", "/additional-info", "/find-account"]; // 필요 경로 추가
+const noLayoutPaths = ["/login", "/signup", "/signup/complete", "/additional-info", "/find-account", "/oauth2/callback"]; // 필요 경로 추가
 
 function LayoutContent({ children }) {
   const pathname = usePathname();
@@ -31,8 +31,11 @@ function LayoutContent({ children }) {
   // 전역 인증 상태 확인
   useEffect(() => {
     const initAuth = async () => {
-      // 이미 인증 상태가 확인되었거나 로그인/회원가입 페이지인 경우 스킵
-      if (authChecked || isNoLayoutPage) {
+      if (isNoLayoutPage) return;
+
+      // 이미 인증된 상태면 스킵!
+      if (isAuthenticated) {
+        setAuthChecked(true);
         return;
       }
 
@@ -51,7 +54,7 @@ function LayoutContent({ children }) {
     } else {
       setAuthChecked(true);
     }
-  }, [checkAuthStatusSilently, isNoLayoutPage, authChecked]);
+  }, [checkAuthStatusSilently, isNoLayoutPage]);
 
   // 인증된 사용자가 있을 때 WebSocket 연결 확인
   useEffect(() => {

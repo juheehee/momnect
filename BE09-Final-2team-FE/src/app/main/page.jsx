@@ -1,6 +1,6 @@
 "use client";
 
-import { productAPI, reviewAPI } from "@/lib/api"; // reviewAPI 추가
+import { productAPI, reviewAPI } from "@/lib/api";
 import React, { useState, useEffect } from "react";
 import ProductCard from "../../components/common/ProductCard";
 import "./Main.css";

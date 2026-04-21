@@ -1,43 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { toast } from 'sonner';
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import "./additional-info.css";
 import DaumPostcode from "react-daum-postcode";
 import { processAddressData } from "@/app/(user)/components/addressUtils";
 import { useUserStore } from "@/store/userStore";
+import {userAPI} from "@/lib/api";
 
 export default function AdditionalInfo() {
   const router = useRouter();
-
+  const searchParams = useSearchParams();
   const { userInfo, updateUserInfo, processSignup } = useUserStore();
 
-  // userInfo가 로드되지 않은 경우 로딩 표시
-  if (!userInfo) {
-    return (
-      <div className="additional-info-container">
-        <div className="additional-info-card">
-          <div className="card-content">
-            <div className="loading-message">로딩 중...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // 모든 useState 먼저 선언
   // 카카오 원본 닉네임과 이메일
   const [kakaoUserInfo] = useState({
-    nickname: userInfo?.kakaoNickname || "카카오닉네임",
-    email: userInfo?.kakaoEmail || "kakaouser@kakao.com",
+    nickname: userInfo?.kakaoNickname || "",
+    email: userInfo?.kakaoEmail || "",
   });
 
   // 폼 입력 상태
   const [formData, setFormData] = useState({
-    name: userInfo?.name || "",
-    nickname: userInfo?.nickname || userInfo?.kakaoNickname || "",
-    address: userInfo?.address || "",
-    agreeToTerms: userInfo?.agreements?.privacy || false,
+    name: "",
+    nickname: userInfo?.kakaoNickname || "",
+    phone: "",
+    address: "",
+    agreeToTerms: false,
   });
 
   // 우편번호 모달 상태
@@ -54,6 +45,44 @@ export default function AdditionalInfo() {
 
   // 폼 전체 유효성 상태
   const [isFormValid, setIsFormValid] = useState(false);
+
+  // useEffect 전부
+  // URL 파라미터 읽어서 userStore에 저장
+  useEffect(() => {
+    const kakaoNickname = searchParams.get("kakaoNickname");
+    const kakaoEmail = searchParams.get("kakaoEmail");
+    const oauthId = searchParams.get("oauthId");
+    const provider = searchParams.get("provider");
+
+    if (oauthId && provider && !userInfo) {
+      updateUserInfo({
+        kakaoNickname: kakaoNickname || "",
+        kakaoEmail: kakaoEmail || "",
+        oauthId,
+        provider,
+        signupType: "kakao",
+        agreements: { terms: false, privacy: false },
+      });
+    }
+  }, [searchParams]);
+
+  // 닉네임 입력 시 유효성 검사 실행
+  useEffect(() => {
+    const originalKakaoNickname = userInfo?.kakaoNickname || "";
+    const result = validateNickname(formData.nickname, originalKakaoNickname);
+    setValidationStates((prev) => ({ ...prev, nickname: result }));
+  }, [formData.nickname, userInfo?.kakaoNickname]);
+
+  // 폼 유효성 상태 업데이트
+  useEffect(() => {
+    const isFieldsValid = ["name", "nickname", "phone", "address"].every(
+        (field) => formData[field].trim() !== ""
+    );
+    const isNicknameValid = validationStates.nickname.checked;
+    const isAgreementValid = formData.agreeToTerms;
+    setIsFormValid(isFieldsValid && isNicknameValid && isAgreementValid);
+  }, [formData.name, formData.nickname, formData.phone, formData.address,
+    formData.agreeToTerms, validationStates.nickname.checked]);
 
   // 닉네임 유효성 검사 함수 (중복 로직 제거)
   const validateNickname = (nickname, originalKakaoNickname) => {
@@ -78,39 +107,6 @@ export default function AdditionalInfo() {
     };
   };
 
-  // 컴포넌트 마운트 시 유저 정보 초기화
-  useEffect(() => {
-    if (userInfo?.signupType !== "kakao") {
-      updateUserInfo({
-        ...userInfo,
-        name: "",
-        loginId: "",
-        password: "",
-        nickname: userInfo?.kakaoNickname || "카카오닉네임",
-        email: userInfo?.kakaoEmail || "kakaouser@kakao.com",
-        phone: "",
-        address: "",
-        signupType: "kakao",
-        agreements: { terms: false, privacy: false, age: false, location: false, push: false },
-      });
-    }
-  }, [userInfo, updateUserInfo]);
-
-  // 닉네임 입력 시 유효성 검사 실행
-  useEffect(() => {
-    const originalKakaoNickname = userInfo?.kakaoNickname || "카카오닉네임";
-    const result = validateNickname(formData.nickname, originalKakaoNickname);
-    setValidationStates((prev) => ({ ...prev, nickname: result }));
-  }, [formData.nickname, userInfo?.kakaoNickname]);
-
-  // 폼 유효성 상태 업데이트
-  useEffect(() => {
-    const isFieldsValid = ["name", "nickname", "address"].every((field) => formData[field].trim() !== "");
-    const isNicknameValid = validationStates.nickname.checked;
-    const isAgreementValid = formData.agreeToTerms;
-    setIsFormValid(isFieldsValid && isNicknameValid && isAgreementValid);
-  }, [formData, validationStates]);
-
   // 폼 입력 변경 핸들러
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -121,21 +117,20 @@ export default function AdditionalInfo() {
     setFormData((prev) => ({ ...prev, agreeToTerms: checked }));
   };
 
-  // 닉네임 중복 확인 (모의 API)
+  // 닉네임 중복 확인
   const checkDuplicate = async (type, value) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const duplicates = { nickname: ["관리자", "테스트", "admin"] };
-        const isDuplicate = duplicates[type]?.includes(value);
-        resolve({ available: !isDuplicate, message: isDuplicate ? "이미 사용 중입니다" : "사용 가능합니다" });
-      }, 1000);
-    });
+    const response = await userAPI.checkDuplicate(type, value);
+    const data = response.data.data;
+    return {
+      available: !data.duplicate, // duplicate: false → available: true
+      message: data.message,
+    };
   };
 
   // 중복 확인 버튼 클릭 핸들러
   const handleDuplicateCheck = async () => {
     const value = formData.nickname;
-    const originalKakaoNickname = userInfo?.kakaoNickname || "카카오닉네임";
+    const originalKakaoNickname = userInfo?.kakaoNickname || "";
 
     // 기본 닉네임은 중복 확인 없이 통과
     if (value === originalKakaoNickname) {
@@ -186,19 +181,34 @@ export default function AdditionalInfo() {
   const handleAddressSearch = () => setIsPostcodeOpen(true);
 
   // 폼 제출 핸들러
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isFormValid && userInfo) {
       const finalUserData = {
         ...userInfo,
         ...formData,
-        agreements: { ...userInfo.agreements, privacy: formData.agreeToTerms },
       };
-      updateUserInfo(finalUserData);
-      processSignup(finalUserData);
-      router.push("/signup/complete?from=kakao");
+      const result = await processSignup(finalUserData);
+      if (result.success) {
+        router.push("/signup/complete?from=kakao");
+      } else {
+        toast.error(result.message || "회원가입에 실패했습니다.");
+      }
     }
   };
+
+  // userInfo가 로드되지 않은 경우 로딩 표시
+  if (!userInfo) {
+    return (
+        <div className="additional-info-container">
+          <div className="additional-info-card">
+            <div className="card-content">
+              <div className="loading-message">로딩 중...</div>
+            </div>
+          </div>
+        </div>
+    );
+  }
 
   return (
     <div className="additional-info-container">
@@ -247,6 +257,17 @@ export default function AdditionalInfo() {
             </div>
             <div className={`validation-message ${validationStates.nickname.status}`}>
               {validationStates.nickname.message}
+            </div>
+            {/* 전화번호 필드 추가 */}
+            <div className="input-group">
+              <input
+                  className="input-field"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  placeholder="전화번호를 입력 (예: 01012345678)"
+                  required
+              />
             </div>
             <div className="input-group">
               <input

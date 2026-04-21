@@ -332,6 +332,10 @@
     margin-top: 10px;
 }
 
+.submit-button:disabled {
+    color: #FFFFFF;
+}
+
 .submit-button.active {
     background-color: #85B3EB;
     cursor: pointer;

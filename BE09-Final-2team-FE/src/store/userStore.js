@@ -54,6 +54,47 @@ export const useUserStore = create(
                 }
             },
 
+            // 카카오 유저 정보 임시 저장
+            userInfo: null,
+
+            updateUserInfo: (info) => set({ userInfo: info }),
+
+            processSignup: async (finalUserData) => {
+                try {
+                    const response = await userAPI.signup({
+                        loginId: null, // 백엔드에서 kakao_{oauthId}로 자동생성
+                        password: null,
+                        name: finalUserData.name,
+                        email: finalUserData.kakaoEmail || '',
+                        phoneNumber: finalUserData.phone,
+                        address: finalUserData.address,
+                        oauthProvider: 'KAKAO',
+                        oauthId: finalUserData.oauthId,
+                        nickname: finalUserData.nickname,
+                        profileImageUrl: finalUserData.profileImageUrl || null,
+                        isTermsAgreed: true,
+                        isPrivacyAgreed: finalUserData.agreeToTerms,
+                        role: 'USER',
+                    });
+
+                    const { user, accessToken, refreshToken } = response.data.data;
+
+                    set({
+                        user,
+                        accessToken,
+                        refreshToken,
+                        isAuthenticated: true,
+                        isAuthReady: true,
+                        userInfo: null, // 가입 완료 후 초기화
+                    });
+
+                    return { success: true };
+                } catch (error) {
+                    console.error('카카오 회원가입 실패:', error);
+                    return { success: false, message: error.response?.data?.message || '회원가입 실패' };
+                }
+            },
+
             // 선택적 인증 확인
             checkAuthStatusSilently: async () => {
                 const { accessToken } = get();

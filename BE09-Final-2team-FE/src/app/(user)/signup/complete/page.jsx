@@ -60,7 +60,6 @@ const SignupComplete = () => {
 
     // 카카오 사용자용 서비스 시작하기
     const handleStartService = () => {
-        setLoginStatus(true);
         router.push('/');
     };
 

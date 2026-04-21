@@ -73,37 +73,9 @@ export default function Login() {
         }
     };
 
-    // 카카오 로그인 핸들러 (임시)
-    const handleKakaoLogin = async () => {
-        setIsLoading(true);
-        setErrorMessage('');
-
-        try {
-            // 임시 카카오 데이터 (실제로는 카카오 SDK 사용)
-            const dummyKakaoData = {
-                id: 'kakao_' + Date.now(),
-                nickname: '카카오 프로필 닉네임',
-                email: 'user@kakao.com'
-            };
-
-            const result = await tempKakaoLogin(dummyKakaoData);
-
-            if (result.success) {
-                if (result.isNewUser) {
-                    // 신규 사용자 - 추가정보 입력 페이지로
-                    router.push('/additional-info');
-                } else {
-                    // 기존 사용자 - 메인으로
-                    router.push('/');
-                }
-            } else {
-                setErrorMessage(result.message);
-            }
-        } catch (error) {
-            setErrorMessage('카카오 로그인 중 오류가 발생했습니다.');
-        } finally {
-            setIsLoading(false);
-        }
+    // 카카오 로그인 핸들러
+    const handleKakaoLogin = () => {
+        window.location.href = 'http://localhost:8000/api/v1/user-service/oauth2/authorization/kakao';
     };
 
     return (

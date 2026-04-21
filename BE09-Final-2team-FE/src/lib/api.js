@@ -24,33 +24,27 @@ const api = axios.create({
 // 요청 인터셉터 - accessToken 자동 주입
 api.interceptors.request.use(
   (config) => {
-    // localStorage에서 직접 토큰 가져오기
-    const userStorage = localStorage.getItem("user-storage");
-    let token = null;
-    if (userStorage) {
-      try {
-        const parsed = JSON.parse(userStorage);
-        token = parsed.state?.accessToken;
-      } catch (e) {
-        console.error("localStorage 파싱 실패:", e);
+      const requestUrl = config.url || "";
+      const isRefreshRequest = requestUrl.includes("/user-service/auth/refresh");
+      const token = useUserStore.getState().accessToken;
+
+      // refresh 요청에는 Authorization 헤더를 붙이지 않는다.
+      // (만료 토큰이 붙으면 백엔드 JWT 필터에서 refresh 진입 전에 401로 차단될 수 있음)
+      if (!isRefreshRequest && token) {
+          config.headers.Authorization = `Bearer ${token}`;
+      } else if (!isRefreshRequest) {
+          console.warn("액세스 토큰이 없습니다");
       }
-    }
 
-    // 디버깅
-    console.log("API 요청 토큰:", token ? "존재함" : "없음");
-    console.log("요청 URL:", config.url);
+      if (isRefreshRequest && config.headers?.Authorization) {
+          delete config.headers.Authorization;
+      }
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn("액세스 토큰이 없습니다");
-    }
-
-    return config;
+      return config;
   },
-  (error) => {
-    console.error("요청 인터셉터 오류:", error);
-    return Promise.reject(error);
+    (error) => {
+        console.error("요청 인터셉터 오류:", error);
+        return Promise.reject(error);
   }
 );
 
