@@ -12,17 +12,14 @@ import lombok.RequiredArgsConstructor;
 public class SignupRequest {
 
     // 필수 필드
-    @NotBlank(message = "로그인 ID를 입력해주세요")
-    private final String loginId;
+    private final String loginId;   // 카카오 로그인 시 자동생성되므로 선택
 
     private final String password; // 소셜로그인시 null 가능
 
     @NotBlank(message = "이름을 입력해주세요")
     private final String name;
 
-    @NotBlank(message = "이메일을 입력해주세요")
-    @Email(message = "올바른 이메일 형식으로 입력해주세요")
-    private final String email;
+    private final String email; // 카카오는 이메일 권한 없음
 
     @NotBlank(message = "휴대폰번호를 입력해주세요")
     @Pattern(regexp = "^01[0-9]{8,9}$", message = "휴대폰번호는 010으로 시작하는 10-11자리 숫자로 입력해주세요")

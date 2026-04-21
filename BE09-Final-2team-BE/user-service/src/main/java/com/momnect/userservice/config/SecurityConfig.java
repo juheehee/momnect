@@ -3,6 +3,8 @@ package com.momnect.userservice.config;
 import com.momnect.userservice.security.JwtAuthenticationFilter;
 import com.momnect.userservice.security.RestAccessDeniedHandler;
 import com.momnect.userservice.security.RestAuthenticationEntryPoint;
+import com.momnect.userservice.security.oauth2.CustomOAuth2UserService;
+import com.momnect.userservice.security.oauth2.OAuth2SuccessHandler;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -31,6 +33,8 @@ public class SecurityConfig {
     private final RestAccessDeniedHandler restAccessDeniedHandler;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -47,6 +51,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/verify-account", "/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/auth/reset-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/validate", "/auth/validate-cookie").permitAll()
+
+                        // OAuth2 로그인 경로 허용
+                        .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
 
                         // API 문서 (모든 HTTP 메서드 허용)
                         .requestMatchers(HttpMethod.GET, "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
@@ -66,6 +73,13 @@ public class SecurityConfig {
 
                         // 나머지는 모두 인증 필요
                         .anyRequest().authenticated()
+                )
+                // OAuth2 설정 추가
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2SuccessHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         ;

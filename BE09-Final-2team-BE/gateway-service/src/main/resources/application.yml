@@ -50,6 +50,12 @@ spring:
             - Path=/api/v1/user-service/auth/**
           filters:
             - RewritePath=/api/v1/user-service/(?<segment>.*), /${segment}
+        - id: user-service-oauth2
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/v1/user-service/login/oauth2/**,/api/v1/user-service/oauth2/**
+          filters:
+            - RewritePath=/api/v1/user-service/(?<segment>.*), /${segment}
         - id: user-service-users
           uri: lb://USER-SERVICE
           predicates:

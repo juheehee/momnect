@@ -15,12 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.momnect.userservice.command.mapper.UserMapper;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Collections;
-import java.util.List;
-
 import java.util.List;
 
 @Service
@@ -121,12 +117,12 @@ public class AuthService {
      * 중복 사용자 검증
      */
     private void validateDuplicateUser(SignupRequest request) {
-        if (userRepository.findByLoginId(request.getLoginId()).isPresent()) {
+        if (request.getLoginId() != null && userRepository.findByLoginId(request.getLoginId()).isPresent()) {
             throw new RuntimeException("이미 사용 중인 로그인 ID입니다");
         }
 
         // 이메일 중복 체크 추가
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (request.getEmail() != null && userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("이미 사용 중인 이메일입니다");
         }
     }
@@ -178,11 +174,21 @@ public class AuthService {
      * SignupRequest에서 User 엔티티 생성
      */
     private User createUserFromRequest(SignupRequest request) {
+        // loginId 처리: 카카오는 자동생성, 일반은 필수
+        String loginId = request.getLoginId();
+        if (loginId == null || loginId.isBlank()) {
+            if ("KAKAO".equals(request.getOauthProvider())) {
+                loginId = "kakao_" + request.getOauthId();
+            } else {
+                throw new RuntimeException("로그인 ID는 필수입니다");
+            }
+        }
+
         // 휴대폰번호 정제 (하이픈 제거)
         String cleanPhoneNumber = request.getPhoneNumber().replaceAll("[^0-9]", "");
 
         return User.builder()
-                .loginId(request.getLoginId())
+                .loginId(loginId)
                 .password(request.getPassword() != null ?
                         passwordEncoder.encode(request.getPassword()) : null)
                 .name(request.getName())
