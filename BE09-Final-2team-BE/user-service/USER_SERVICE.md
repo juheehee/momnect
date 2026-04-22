@@ -163,8 +163,8 @@ graph TB
     E --> F[CustomOAuth2UserService]
     F --> G{신규 유저?}
     G -->|Yes| H[/additional-info 추가정보 입력]
-    H --> I[회원가입 완료 → 로그인]
-    G -->|No| J[JWT 발급 + 쿠키 세팅]
+    H --> I[회원가입 완료, 로그인]
+    G -->|No| J[JWT 발급, 쿠키 세팅]
     J --> K[/oauth2/callback]
     K --> L[프론트: refresh 호출]
     L --> M[accessToken 재발급]
