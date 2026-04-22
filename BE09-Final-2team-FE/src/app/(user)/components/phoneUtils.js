@@ -55,12 +55,3 @@ export const validatePhoneNumber = (phoneNumber) => {
 export const extractPhoneNumbers = (phoneNumber) => {
     return phoneNumber.replace(/\D/g, '');
 };
-
-/**
- * 핸드폰 번호 설정값
- */
-export const PHONE_CONFIG = {
-    placeholder: '휴대전화번호를 입력하세요 (01012345678)',
-    maxLength: 13, // 010-1234-5678 포맷 기준
-    pattern: /^010-\d{4}-\d{4}$/ // 010-1234-5678 포맷
-};

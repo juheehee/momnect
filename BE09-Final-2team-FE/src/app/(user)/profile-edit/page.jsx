@@ -253,7 +253,7 @@ const ProfileEdit = ({ currentUserInfo, onProfileUpdate }) => {
                                 value={formData.phone}
                                 onChange={handleInputChange}
                                 className={`profile-input ${validationStates.phone.status === 'error' ? 'error' : ''}`}
-                                placeholder="휴대전화번호를 입력해주세요"
+                                placeholder="휴대전화번호를 입력해주세요 (예: 01012345678)"
                                 maxLength={13}
                             />
                             {validationStates.phone.message && (

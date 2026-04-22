@@ -480,7 +480,7 @@ export default function Signup() {
                         <input
                             className="signup-input"
                             type="text"
-                            placeholder="휴대전화번호를 입력하세요"
+                            placeholder="휴대전화번호를 입력해주세요 (예: 01012345678)"
                             value={formData.phone}
                             onChange={(e) => handleInputChange('phone', e.target.value)}
                             disabled={isSubmitting}
