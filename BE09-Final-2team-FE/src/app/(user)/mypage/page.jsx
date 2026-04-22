@@ -369,12 +369,12 @@ const MyPage = () => {
                     <div className="menu-group">
                         <h3 className="menu-title">내 정보</h3>
                         <div className="menu-items">
-                            <button onClick={openProfileEditSidebar}>프로필 수정</button>
-                            <button onClick={openPasswordChangeSidebar}>비밀번호 변경</button>
-                            <button onClick={openLocationSidebar}>거래지역 관리</button>
-                            <button onClick={openChildManagementSidebar}>자녀 관리</button>
+                            <button className="menu-item" onClick={openProfileEditSidebar}>프로필 수정</button>
+                            <button className="menu-item" onClick={openPasswordChangeSidebar}>비밀번호 변경</button>
+                            <button className="menu-item" onClick={openLocationSidebar}>거래지역 관리</button>
+                            <button className="menu-item" onClick={openChildManagementSidebar}>자녀 관리</button>
                             <button
-                                className="cursor-pointer"
+                                className="menu-item"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     openWidthdrawalSidebar();
@@ -392,6 +392,7 @@ const MyPage = () => {
                         <div className="menu-items">
                             <a
                                 href="#"
+                                className="menu-item"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     openWishlistSidebar();
@@ -401,6 +402,7 @@ const MyPage = () => {
                             </a>
                             <a
                                 href="#"
+                                className="menu-item"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     setReviewOpen(true);

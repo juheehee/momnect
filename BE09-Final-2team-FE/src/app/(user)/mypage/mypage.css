@@ -59,6 +59,13 @@
     color: #6B9AFF;
 }
 
+/* button 태그 브라우저 기본 스타일 리셋만 */
+.menu-items button.menu-item {
+    background: none;
+    border: none;
+    text-align: left;
+}
+
 .menu-divider {
     width: 100%;
     height: 1px;
