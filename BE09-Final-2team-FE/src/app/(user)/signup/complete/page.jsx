@@ -53,11 +53,6 @@ const SignupComplete = () => {
         router.push('/login');
     };
 
-    // 메인 페이지 이동
-    const handleGoToMain = () => {
-        router.push('/');
-    };
-
     // 카카오 사용자용 서비스 시작하기
     const handleStartService = () => {
         router.push('/');
@@ -94,9 +89,6 @@ const SignupComplete = () => {
                         <>
                             <button className="login-button" onClick={handleLogin}>
                                 로그인 하기
-                            </button>
-                            <button className="main-page-link" onClick={handleGoToMain}>
-                                메인 페이지로 가기
                             </button>
                         </>
                     )}
