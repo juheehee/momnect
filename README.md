@@ -64,7 +64,7 @@
 | 배기열 | **리뷰 관리**            | open AI를 활용한 긍정/부정 리뷰 요약    |
 | 박범석 | **커뮤니티 관리**               | 육아꿀팁 / 상품 경매 CRUD |
 
-> 📎 유저 서비스 상세 구현 내용: [USER_SERVICE.md](./USER_SERVICE.md)
+> 📎 유저 서비스 상세 구현 내용: [USER_SERVICE.md](./BE09-Final-2team-BE/user-service/USER_SERVICE.md)
 
 ## 🌐 1-8. MSA 식 구조
 
