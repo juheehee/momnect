@@ -154,22 +154,22 @@ refreshToken 만료 시 로그아웃이 되지 않고 만료된 토큰으로 인
 
 ## 5. 카카오 로그인 전체 흐름
 
-```mermaid
-graph TB
-    A[프론트: 카카오 로그인 버튼] --> B[GET /oauth2/authorization/kakao]
-    B --> C[카카오 인가 서버]
-    C --> D[사용자 동의]
-    D --> E[GET /login/oauth2/code/kakao]
-    E --> F[CustomOAuth2UserService]
-    F --> G{신규 유저?}
-    G -->|Yes| H[/additional-info 추가정보 입력]
-    H --> I[회원가입 완료, 로그인]
-    G -->|No| J[JWT 발급, 쿠키 세팅]
-    J --> K[/oauth2/callback]
-    K --> L[프론트: refresh 호출]
-    L --> M[accessToken 재발급]
-    M --> N[메인 페이지 이동]
-```
+**공통 진입**
+프론트 카카오 버튼 클릭
+→ `GET /oauth2/authorization/kakao`
+→ 카카오 인가 서버 (사용자 동의)
+→ `GET /login/oauth2/code/kakao`
+→ `CustomOAuth2UserService`
+
+**신규 유저**
+→ `/additional-info` 추가정보 입력
+→ 회원가입 완료 → 로그인 페이지
+
+**기존 유저**
+→ JWT 발급 + 쿠키 세팅
+→ `/oauth2/callback`
+→ `refresh()` 호출 → accessToken 재발급
+→ 메인 페이지 이동
 
 ---
 
