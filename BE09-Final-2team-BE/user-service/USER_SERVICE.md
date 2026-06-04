@@ -75,9 +75,9 @@ Gateway를 통해 `/api/v1/user-service/**` 경로로 진입하며, `/auth`, `/u
 **배경**
 Spring Security OAuth2 Client를 MSA 구조에서 구현할 때, 게이트웨이와 유저 서비스 사이의 인증 흐름 설계가 필요했다.
 
-**문제 1: Redirect URI 불일치 (KOE205)**
-- 카카오 디벨로퍼스에 등록된 Redirect URI와 실제 요청 URI가 달라 인증 실패
-- 해결: 카카오 앱 설정의 Redirect URI를 `http://localhost:8000/login/oauth2/code/kakao`로 통일
+**문제 1: KOE205 에러**
+- 카카오 디벨로퍼스에 설정된 동의항목과 애플리케이션에서 요청한 scope 불일치로 KOE205 에러 발생
+- 해결: 카카오 동의항목 scope에서 비즈니스 인증이 필요한 account_email 제거하여 해결
 
 **문제 2: MSA 환경에서 OAuth2 콜백 라우팅**
 - OAuth2 인가 코드는 게이트웨이로 들어오는데, Spring Security OAuth2 처리는 user-service에서 해야 함
